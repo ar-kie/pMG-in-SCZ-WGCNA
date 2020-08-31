@@ -77,7 +77,7 @@ pmg <- data.frame(assay(dds))
 
 
 #Detecing outliers based on hierarchically clustering sample correlation
-d <- bicor(pmg, use = "p") #same results as with vst
+d <- bicor(pmg, use="p", maxPOutliers = 0.05) #same results as with vst
 hc <- hclust(dist(1 - d))
 #plot(hc, xlab="", sub="", main = "Sample dissimilarity clustering",
 #     labels = FALSE, hang = 0.04);
@@ -107,7 +107,7 @@ plot.phylo(as.phylo(hc_coreExpr), type = "p", edge.col = "blue", edge.width = 2,
 
 
 #Cluster samples based on microglia gene signature expression correlation
-d_core <- bicor(IDannot_clean.Expr, use="p")
+d_core <- bicor(IDannot_clean.Expr, use="p", maxPOutliers = 0.05)
 plotClusterTreeSamples(dist(1 - d_core))
 
 hc_core <- hclust(dist(1 - d_core))
@@ -153,7 +153,7 @@ plot.phylo(as.phylo(hc_Expr), type = "p", edge.col = "blue", edge.width = 2,
            show.node.label = TRUE, no.margin = TRUE)
 
 #Detecing outliers based on correlation
-d <- bicor(assay(vsd), use = "p") #same results as with vst
+d <- bicor(assay(vsd), use="p", maxPOutliers = 0.05) #same results as with vst
 plotClusterTreeSamples(dist(1 - d))
 plotClusterTreeSamples(d)
 
@@ -222,44 +222,40 @@ PoV <- round(100 * attr(pca, "percentVar"))
 #pcplot(pca, Diagnosis, title="DIAGNOSIS", PoV, "Status", c("CTL", "MDD"), c("turquoise", "indianred1"))
 
 #Plotting
-factor.covs <- data.frame(cbind("Diagnosis"=all_covs_sub$status, "Region"=as.factor(all_covs_sub$region), 
-                                "Batch" = as.factor(all_covs_sub$batch)))
+factor.covs <- list("status"=as.factor(all_covs_sub$status), "region"=as.factor(all_covs_sub$region), 
+                                "batch" = as.factor(all_covs_sub$batch))
 rownames(factor.covs) <- rownames(all_covs_sub)
-num.covs <- data.frame(cbind("Age"=all_covs_sub$age, 
-                          "RIN"=all_covs_sub$RIN, "EXONIC RATE"=all_covs_sub$Exonic.Rate))
+num.covs <- list("age"=all_covs_sub$age, 
+                          "RIN"=all_covs_sub$RIN, "Exonic.Rate"=all_covs_sub$Exonic.Rate)
 rownames(num.covs) <- rownames(all_covs_sub)
 
-plot.list <- vector("list", length(colnames(all.factors)))
-names(plot.list) <- c("DIAGNOSIS", "REGION", "BATCH", "AGE", "RIN", "EXONIC RATE")
-for (i in names(plot.list))
+plot.list <- list("status"=c("CTL", "MDD"), "region"=c("GFM", "GTS"),
+                      "batch"=c("1", "2", "3", "4"))
 
-plot.list <- list("DIAGNOSIS"=c("CTL", "MDD"), "REGION"=c("GFM", "GTS"),
-                      "BATCH"=c("1", "2", "3", "4"))
+plot.list.clrs <- list("status"=c("turquoise", "indianred1"), "region"=c("turquoise", "indianred1"),
+                  "batch"=c("turquoise", "indianred1", "blue", "magenta"))
 
-plot.list.clrs <- list("DIAGNOSIS"=c("turquoise", "indianred1"), "REGION"=c("turquoise", "indianred1"),
-                  "BATCH"=c("turquoise", "indianred1", "blue", "magenta"))
 
-plots <- NULL
-for (i in names(plot.list))
-  for (n in names(factor.covs))
-    plots[i] <- ggplot(pca, aes(PC1, PC2, color=n)) +
+for (i in names(plot.list)){
+    plots.1 <- ggplot(pca, aes(PC1, PC2, color=as.factor(paste(pca[[i]])))) +
   geom_point(size=2) +
   labs(title = i, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = i) +
-  scale_color_manual(labels = plot.list[[i]], values = plot.list.clrs[[i]]) +
+  scale_color_manual(labels = c(plot.list[[i]]), values = c(plot.list.clrs[[i]])) +
   geom_text(aes(label=name),vjust=2,check_overlap = FALSE,size = 4)+
   theme_bw()+
   theme(plot.title = element_text(hjust=0.5))
+    print(plots.1)
+}
 
-plots2
-for (i in c("AGE", "RIN", "EXONIC RATE"))
-  for (n in names(factor.covs))
-  plots2[i] <- ggplot(pca, aes(PC1, PC2, color=n)) +
-  geom_point(size=2) +
-  labs(title = i, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = i) +
-  theme_bw()+
-  theme(plot.title = element_text(hjust=0.5))
 
-print(plots + plots2)
+for (i in names(num.covs))
+  plots.2 <- ggplot(pca, aes(PC1, PC2, color=pca[[i]])) +
+    geom_point(size=2) +
+    labs(title = i, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = i) +
+    theme_bw()+
+    theme(plot.title = element_text(hjust=0.5))
+  print(plots.2)
+
 
 
 
@@ -267,7 +263,7 @@ print(plots + plots2)
 #                                   Analysis start: covariate analysis                                     #
 #==========================================================================================================#
 #Covariation among technological & biological variables
-COR = bicor(all_covs_sub, use="p")
+COR = bicor(all_covs_sub, use="p", maxPOutliers = 0.05)
 pheatmap(COR, legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(COR)), legend = T, main = "Correlation matrix of measured covariates",
          legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Bi-weight Midcorrelation\n\n"),
          color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = FALSE)
@@ -315,7 +311,7 @@ plot.phylo(as.phylo(hc_Expr.corrected), type = "p", edge.col = "blue", edge.widt
            show.node.label = TRUE, no.margin = TRUE)
 
 #Detecing outliers based on correlation
-d.corrected <- bicor(assay(vsd.corrected), use = "p") #same results as with vst
+d.corrected <- bicor(assay(vsd.corrected), use="p", maxPOutliers = 0.05) #same results as with vst
 plotClusterTreeSamples(dist(1 - d.corrected),  main = "Sample dendrogram after normalization and PC-driven correction")
 
 hc.corrected <- hclust(dist(1 - d.corrected))
@@ -340,25 +336,24 @@ pcs <- plotPCA.custom(subset , intgroup=c("RIN", "status", "sex", "age", "region
 #Grab proportion of variance explained by each PC:
 PoV <- round(100 * attr(pcs, "percentVar"))
 
-plots <- NULL
-for (i in names(plot.list))
-  for (n in names(factor.covs))
-    plots[i] <- ggplot(pcs, aes(PC1, PC2, color=n)) +
+for (i in names(plot.list)){
+  plots <- ggplot(pcs, aes(PC1, PC2, color=as.factor(paste(pca[[i]])))) +
   geom_point(size=2) +
   labs(title = i, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = i) +
   scale_color_manual(labels = plot.list[[i]], values = plot.list.clrs[[i]]) +
   geom_text(aes(label=name),vjust=2,check_overlap = FALSE,size = 4)+
   theme_bw()+
   theme(plot.title = element_text(hjust=0.5))
+  print(plots)}
 
-plots2
-for (i in c("AGE", "RIN", "EXONIC RATE"))
-  for (n in names(factor.covs))
-    plots2[i] <- ggplot(pcs, aes(PC1, PC2, color=n)) +
+
+for (n in names(num.covs)){
+  plots2 <- ggplot(pcs, aes(PC1, PC2, color=pca[[n]])) +
   geom_point(size=2) +
-  labs(title = i, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = i) +
+  labs(title = n, x = paste0("PC1: ",PoV[1],"% variance"), y = paste0("PC2: ",PoV[2],"% variance"), color = n) +
   theme_bw()+
   theme(plot.title = element_text(hjust=0.5))
+  print(plots2)}
 
 print(plots + plots2)
 
@@ -391,7 +386,7 @@ meanSdPlot(as.matrix(assay(vsd.corrected)))
 
 trans_norm <- data.frame(t(assay(vsd.corrected)))
 
-trans_cor <- bicor(t(trans_norm), use = "p")
+trans_cor <- bicor(t(trans_norm), use="p", maxPOutliers = 0.05)
 trans_cor.dat <- data.frame(Intersample.correlation=c(rowMeans(trans_cor), rowMedians(trans_cor)), Metric=c(rep("Correlation Means", 34), rep("Correlation Medians", 34)))
 
 summary(rowMedians(trans_cor))
@@ -429,7 +424,7 @@ sft.min.prefilter = pickSoftThreshold(
   RsquaredCut = 0.8, 
   powerVector = c(seq(1, 10, by = 1), seq(12, 20, by = 2)), 
   removeFirst = FALSE, nBreaks = 20, blockSize = NULL, 
-  corFnc = bicor, corOptions = list(use = 'p'), 
+  corFnc = bicor, corOptions = "use = 'p',maxPOutliers = 0.05", 
   networkType = "unsigned",
   moreNetworkConcepts = FALSE,
   gcInterval = NULL,
@@ -608,7 +603,7 @@ plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
 sizeGrWindow(12, 9)
 oldMEs <- MEList$eigengenes
 par(mar = c(6, 8.5, 3, 3));
-distPC <- 1-abs(bicor(oldMEs,use="all.obs", maxPOutliers = 0.05))
+distPC <- 1-abs(bicor(oldMEs,use="p", maxPOutliers = 0.05))
 distPC <- ifelse(is.na(distPC), 0, distPC)
 MDS <- cmdscale(as.dist(distPC),2)
 modNames = substring(names(oldMEs), 3)
@@ -617,7 +612,7 @@ plot(MDS, col=col, main="Multi-Dimensional Scaling (MDS) of Module Eigengenes (M
 
 sizeGrWindow(12, 9)
 par(mar = c(6, 8.5, 3, 3));
-distPC <- 1-abs(bicor(MEs,use="all.obs", maxPOutliers = 0.05))
+distPC <- 1-abs(bicor(MEs,use="p", maxPOutliers = 0.05))
 distPC <- ifelse(is.na(distPC), 0, distPC)
 MDS <- cmdscale(as.dist(distPC),2)
 modNames = substring(names(MEs), 3)
@@ -642,7 +637,7 @@ for (i in as.character(data.frame(table(dynamicColors))[,1]))
 
 names(annot_clrs.bfcut$Module.Colors) <- colnames(oldMEs)
 
-pheatmap(bicor(oldMEs), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
+pheatmap(bicor(oldMEs, use="p", maxPOutliers = 0.05), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
                          annotation_col=annot.bfcut, annotation_colors = annot_clrs.bfcut,
                          color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = F, 
                          main="Module Eigengene Correlation Before Module Merging")
@@ -676,10 +671,8 @@ for (i in as.character(summarized.modClrs))
 
 names(annot_clrs.afcut$Module.Colors) <- colnames(MEs)[order(colnames(MEs))]
 
-layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
-par(mfrow=c(2,2))
-pheatmap(bicor(MEs), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
-         legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(bicor(MEs))),
+pheatmap(bicor(MEs, use="p", maxPOutliers = 0.05), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
+         legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(bicor(MEs, use="p", maxPOutliers = 0.05))),
          legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2", "0", "0.2", "0.4", "0.6", "0.8", "1", "Biweight midcorrelation \n \n"),
          annotation_col=annot.afcut, annotation_row=annot.afcut, annotation_colors = annot_clrs.afcut,
          color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = F, 
@@ -696,47 +689,24 @@ pheatmap(MEs, cluster_rows = T, cluster_cols = T, annotation_legend = T, annotat
 #==========================================================================================================#
 
 #Before going any further with the analysis: correlate MEs with traits
-METraitCor <- rcorr(as.matrix(all_covs_sub), as.matrix(MEs), type="spearman")
-METraitCor <- bicor(as.matrix(all_covs_sub), as.matrix(MEs), use="p")
-#MECorres <- METraitCor$r[13:45,13:45]
-#TraitCor <- METraitCor$r[c(1:12), c(1:12)]
-#METraitCorRes <- METraitCor$r[13:45,1:12]
-#METraitCorResP <- METraitCor$P[13:45,1:12]
-#METraitCorResFDR <- p.adjust(METraitCorResP, method="hochberg", n=length(METraitCorResP)) #none of which, except SV4, would survive correction
+METraitCor <- bicor(as.matrix(all_covs_sub), as.matrix(MEs), use="p", maxPOutliers = 0.05)
 
-MECorres <- bicor(as.matrix(MEs), use="p")
-TraitCor <- bicor(as.matrix(all_covs_sub), use="p")
+MECorres <- bicor(as.matrix(MEs), use="p", maxPOutliers = 0.05)
+TraitCor <- bicor(as.matrix(all_covs_sub), use="p", maxPOutliers = 0.05)
 
 
-#moduleTraitCor = bicor(MEs, select, "use = 'p'");
-#moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples);
-
-textMatrix = paste(signif(METraitCorRes, 2), "\n(",
-#                   signif(METraitCorResP, 1), ")", "\n(",
-                   signif(METraitCorResFDR, 0), ")",sep = "");
-dim(textMatrix) = dim(METraitCorRes)
-par(mar = c(6, 8.5, 3, 3));
 # Display the correlation values within a heatmap plot
-labeledHeatmap(Matrix = METraitCorRes,
-               xLabels = colnames(METraitCorRes),
-               yLabels = rownames(METraitCorRes),
-               ySymbols = rownames(METraitCorRes),
-               textMatrix=textMatrix,
-               colorLabels = TRUE,
-               colors = blueWhiteRed(50),
-               setStdMargins = FALSE,
-               cex.text = 0.5,
-               cex.lab.x = 0.9,
-               cex.lab.y = 0.9,
-               zlim = c(-1,1),
-               main = paste("Module eigengene (ME) correlation with study covariates"))
 
 pheatmap(t(METraitCor), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
          annotation_row=annot.bfcut, annotation_colors = annot_clrs.bfcut, 
-         color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = T, main="Merged Module Eigengene (ME) - Trait Correlation")
+         color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = F, main="Merged Module Eigengene (ME) - Trait Correlation")
 
-diag(dissTOM) <- NA
-TOMplot(dissTOM^6, geneTree, as.character(dynamicColors))
+pheatmap(t(MECorres), cluster_rows = T, cluster_cols = T, annotation_legend = FALSE, 
+         annotation_row=annot.bfcut, annotation_colors = annot_clrs.bfcut, 
+         color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = F, main="Merged Module Eigengene (ME) - Trait Correlation")
+
+
+
 #==========================================================================================================#
 #                            Microglia gene enrichment in modules                                          #
 #==========================================================================================================#
@@ -820,8 +790,8 @@ SCZ_ncRNAs.Expr.sub <- colnames(hm.subset.df(Subtrans_norm, SCZ_ncRNAs, SampleAn
 Top10kMicNC.Expr<- hm.subset.df(Subtrans_norm, mic_specific_ncRNAs, SampleAnnot, c("Lake et al. 'microglia-specific' ncRNA expression"), get=TRUE)
 AllMicNC.Expr <- hm.subset.df(trans_norm, mic_specific_ncRNAs, SampleAnnot, c("Lake et al. 'microglia-specific' ncRNA expression"), get=TRUE)
 
-Top10kMicNC.Cor <- t(data.frame(bicor(Top10kMicNC.Expr, use = "p")))
-AllMicNC.Cor <- t(data.frame(bicor(AllMicNC.Expr, use = "p")))
+Top10kMicNC.Cor <- t(data.frame(bicor(Top10kMicNC.Expr, use="p", maxPOutliers = 0.05)))
+AllMicNC.Cor <- t(data.frame(bicor(AllMicNC.Expr, use="p", maxPOutliers = 0.05)))
 
 ggcorrplot(Top10kMicNC.Cor, hc.order = TRUE, type = "upper",
            outline.col = "white", tl.cex = 7,
@@ -890,7 +860,7 @@ SCZ_ncRNA.k <- extract.k.perMod(summarized.modClrs, k.per.mod, SCZ_ncRNA.GeneNam
 #its centrality to certain modules by correlating lncRNA expression to module eigengene values, 
 #thereby identifying modules in which any of the given select genes is central.
 
-MMofallGenes <- data.frame(bicor(Subtrans_norm, MEs, use="p"))
+MMofallGenes <- data.frame(bicor(Subtrans_norm, MEs, use="p", maxPOutliers = 0.05))
 
 ####################Grab MM####################
 
@@ -1369,7 +1339,6 @@ genemap.allgenes <- getBM(values = genenames.allgenes,
                                          "strand"))
 
 
-
 annotations <- list()
 for (i in names(GeneNames.ByMod.List))
   annotations[[i]] <- genemap.allgenes[,4][genemap.allgenes[,1] %in% GeneNames.ByMod.List[[i]]]
@@ -1520,8 +1489,7 @@ for (i in names(k.hub.MM.stringent.clean$k.perMod.perGL))
 mods.stringent <- unique(mods.stringent)
 hubs.stringent <- hubs[names(hubs) %in% mods.stringent]
 
-stringent.hubcor <- bicor(Subtrans_norm[colnames(Subtrans_norm) %in% stringent.names], Subtrans_norm[colnames(Subtrans_norm) %in% paste(hubs.stringent)])
-
+stringent.hubcor <- bicor(Subtrans_norm[colnames(Subtrans_norm) %in% stringent.names], Subtrans_norm[colnames(Subtrans_norm) %in% paste(hubs.stringent)], use="p", maxPOutliers = 0.05)
 
 ######################Heatmap construction############################
 colours <- c("Hub gene" = "indianred3", 
@@ -1639,8 +1607,6 @@ for (i in names(k.hub.MM.stringent.clean$k.perMod.perGL))
       }
   
 
-
-
 stringent.pheatmap.annot.type <- stringent.pheatmap.annot.rest[!duplicated(stringent.pheatmap.annot.rest[,2]),]
 stringent.pheatmap.annot.type[,1][11:12] <- "SZ evid. prio. SNP pcRNAs"
 
@@ -1675,7 +1641,7 @@ rowannots.stringent.pheatmap <- rowannots.stringent.pheatmap[match(rownames(stri
 #The solution is to not match the gene names with colors, but their modules.
 pheatmap(stringent.hubcor, cluster_rows =T, cluster_cols = T, annotation_legend = F, 
          legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(stringent.hubcor)), legend = T, main = "Correlation of stringently selected genes (vertical) with respective module hub genes (horizontal)",
-         legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Bi-Midweight correlation \n \n"),
+         legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Biweight midcorrelation \n \n"),
          annotation_row=cbind(stringent.pheatmap.annot[!colnames(stringent.pheatmap.annot)=="GeneIDs"],
                               rowannots.stringent.pheatmap[colnames(rowannots.stringent.pheatmap) != "Gene.Name"]), 
          annotation_colors = c(MMs.stringent.annot.clrs, RNA.type), #using the color annotation from below; annot_clrs from above works,too
@@ -1688,7 +1654,7 @@ rownames(rowannots.stringent.pheatmap) %in% rownames(stringent.pheatmap.annot)
 for (i in stringent.pheatmap.annot.hubs)
   MEnames.stringent <- paste("ME", i, sep="")
 
-MMs.stringent <- bicor(Subtrans_norm[colnames(Subtrans_norm) %in% stringent.names], MEs[colnames(MEs) %in% MEnames.stringent])
+MMs.stringent <- bicor(Subtrans_norm[colnames(Subtrans_norm) %in% stringent.names], MEs[colnames(MEs) %in% MEnames.stringent], use="p", maxPOutliers = 0.05)
 
 stringent.pheatmap.annot.MMs <- stringent.pheatmap.annot.hubs
 colnames(stringent.pheatmap.annot.MMs) <- "ME.Colors"
@@ -1724,9 +1690,9 @@ stringent.pheatmap.annot.names.ordered[rownames(stringent.pheatmap.annot.rest.ty
 
 
 #The solution is to not match the gene names with colors, but their modules.
-pheatmap(MMs.stringent, cluster_rows = T, cluster_cols = T, annotation_legend = T, 
+pheatmap(MMs.stringent, cluster_rows = T, cluster_cols = T, annotation_legend = F, 
          legend_breaks = c(-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8,  max(MMs.stringent)), legend = T, main = "Correlation of stringently selected genes (vertical) with respective module eigengene (horizontal) showing module membership (kME)",
-         legend_labels = c("-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "Bi-Midweight correlation \n \n"),
+         legend_labels = c("-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "Biweight midcorrelation \n \n"),
          annotation_row=cbind(stringent.pheatmap.annot[!colnames(stringent.pheatmap.annot)=="GeneIDs"],
                               rowannots.stringent.pheatmap[colnames(rowannots.stringent.pheatmap) != "Gene.Name"]), 
          annotation_col=MM.stringent.column.annot,
@@ -1923,7 +1889,7 @@ for (i in names(annot2.stri)){
 for (i in names(liberalSZRNA.Hub.Mic.CoReg))
   pheatmap(liberalSZRNA.Hub.Mic.CoReg[[i]], cluster_rows = F, cluster_cols = F, annotation_legend = FALSE, 
            legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(stringent.hubcor)), legend = T, main = paste("Correlation", i, "module genes"),
-           legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Biweight midcorrelation\n\n"),
+           legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Biweight midcorrelation \n\n"),
            color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = FALSE)
 
 
@@ -1932,7 +1898,7 @@ for (i in names(liberalSZRNA.Hub.Mic.CoReg))
 for (i in names(stringentSZRNA.Hub.Mic.CoReg)){
   plot <- pheatmap(stringentSZRNA.Hub.Mic.CoReg[[i]], cluster_rows = T, cluster_cols = T, annotation_legend = T, 
                    legend_breaks = c(-1,-0.8,-0.6,-0.4,-0.2, 0, 0.2 , 0.4, 0.6, 0.8, 1, max(stringent.hubcor)), legend = T, main = paste("Correlation", i, "module genes"),
-                   legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Bi-Midweight correlation\n\n"), annotation_col = pheat.annot, annotation_row =pheat.annot,
+                   legend_labels = c("-1","-0.8","-0.6","-0.4","-0.2","0", "0.2", "0.4", "0.6", "0.8", "1", "Biweight midcorrelation \n\n"), annotation_col = pheat.annot, annotation_row =pheat.annot,
                    color = colorRampPalette(c("#edf8b1", "#7fcdbb", "#2c7fb8"))(50), display_numbers = F, annotation_colors=RNA.type,
                    width=9, height=10, cellwidth=17, cellheight=17)
   print(plot)
@@ -1945,6 +1911,20 @@ dev.off()
 #==========================================================================================================#
 #                                 Network visualization - Cluster network plot                              #
 #==========================================================================================================#
+overlap.diseasegenes.microglia <- NULL
+for (i in names(list))
+  for (n in list[[i]])
+    if (i != "Microglia marker genes" && n %in% list$`Microglia marker genes`)
+      overlap.diseasegenes.microglia <- rbind(overlap.diseasegenes.microglia, c(n, i))
+colnames(overlap.diseasegenes.microglia) <- c("Gene.ID", "RNA.type")
+overlap.diseasegenes.microglia <- data.frame(overlap.diseasegenes.microglia)
+
+annot.for.overlap <- data.frame(annotate(overlap.diseasegenes.microglia[,1]))
+colnames(annot.for.overlap) <- c("Gene.ID", "entrez ID", "hgnc Symbol", "Gene.Name")
+annot.overlap.oflists <- left_join(annot.for.overlap[,c(1,4)], overlap.diseasegenes.microglia, by="Gene.ID")
+
+write.xlsx(annot.overlap.oflists, "Overlapping microglia signature genes with schizophrenia disease genes.xlsx", row.names = T) #Table is correct now
+
 
 type <- list()
 for (i in names(str.annot))
