@@ -1,5 +1,3 @@
 # SZ-lncRNA-mRNA-WGCNA-in-human-pMGs
 
-# lncRNA-mRNA co-expression networks in human primary microglia analyzed on schizophrenia-associated lncRNAs and mRNAs.
-
-# Contact: raphael (dot) kubler (at) mssm (dot) edu
+# Repository for additional supplementary materials: (1) GO-terms by module; (2) schizophrenia-associated lncRNAs and mRNAs that we identified to be microglia marker genes
